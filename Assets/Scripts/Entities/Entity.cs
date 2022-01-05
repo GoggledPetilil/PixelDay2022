@@ -7,21 +7,19 @@ public class Entity : MonoBehaviour
     [Header("Parameters")]
     public int m_MaxHP;
     public int m_HP;
-    public int m_Attack;
     public int m_Speed;
     public int m_JumpForce;
-
-    [Header("Knockback Parameters")]
-    public Vector2 m_ShoveDir;
-    public float m_ShoveForce; // How far this go pushes others.
-    protected float m_ShoveSpeed; // How far this go is pushed back.
-    protected float m_ShoveLeft;
+    protected bool m_Flipped;
 
     [Header("Move Physics")]
     public Vector2 m_MovDir;
     public Vector2 m_FacingDir;
     public bool m_CanMove = true;
     public PhysicsMaterial2D m_BounceMaterial;
+
+    [Header("Jump Parameters")]
+    public float m_JumpDelay = 0.25f;
+    protected float m_JumpTimer;
 
     [Header("Jump Physics")]
     public bool m_OnGround = false;
@@ -34,7 +32,8 @@ public class Entity : MonoBehaviour
     [SerializeField] protected Animator m_Anim;
     [SerializeField] protected AudioSource m_Audio;
     [SerializeField] protected Rigidbody2D m_Body;
-    [SerializeField] protected SpriteRenderer m_Sprite;
+    [SerializeField] protected GameObject m_Sprite;
+    //[SerializeField] protected SpriteRenderer m_Sprite;
     [SerializeField] protected LayerMask m_GroundLayer;
 
     [Header("Particles")]
@@ -65,15 +64,7 @@ public class Entity : MonoBehaviour
     {
         ReduceHealth(value);
 
-        //CreateDust();
-        m_ShoveLeft = 0.2f;
-        m_ShoveSpeed = force;
-        //m_ShoveDir = TurnTo(source);
-        m_FacingDir = new Vector2(Mathf.Round(-m_ShoveDir.x / 0.5f) * 0.5f, Mathf.Round(-m_ShoveDir.y / 0.5f) * 0.5f);
-
         StartCoroutine(Squeeze(0.5f, 1.2f, 0.15f));
-        //EffectsManager.instance.SpawnParentEffect(EffectsManager.instance.m_BloodParticles, transform);
-        //EffectsManager.instance.SpawnBloodStain(transform.position);
         if(m_HP <= 0)
         {
             Death();
@@ -104,6 +95,7 @@ public class Entity : MonoBehaviour
         }
         m_Body.constraints = RigidbodyConstraints2D.FreezeRotation;
         m_MovDir = Vector2.zero;
+        m_CanMove = !state;
     }
 
     public void CheckGround()
@@ -119,6 +111,64 @@ public class Entity : MonoBehaviour
             StartCoroutine(Squeeze(1.5f, 0.8f, 0.05f));
             CreateLandDust();
         }
+    }
+
+    public void Jump()
+    {
+        StartCoroutine(Squeeze(0.5f, 1.5f, 0.05f));
+        m_Body.velocity = new Vector2(m_Body.velocity.x, 0);
+        m_Body.AddForce(Vector2.up * m_JumpForce, ForceMode2D.Impulse);
+        m_JumpTimer = 0.0f;
+        CreateLandDust();
+    }
+
+    public void JumpPhysics()
+    {
+        if(m_HP < 1) return;
+
+        if(m_OnGround)
+        {
+            m_Body.gravityScale = 0f;
+        }
+        else
+        {
+            m_Body.gravityScale = m_Gravity;
+            m_Body.drag = m_LinearDrag * 0.15f;
+            if(m_Body.velocity.y < 0)
+            {
+                m_Body.gravityScale = m_Gravity * m_FallMulti;
+            }
+            else if(m_Body.velocity.y > 0 && !Input.GetKey(KeyCode.X))
+            {
+                m_Body.gravityScale = m_Gravity * (m_FallMulti / 2);
+            }
+        }
+    }
+
+    public virtual void TurnCharacter()
+    {
+        m_FacingDir = m_MovDir;
+
+        if(m_FacingDir.x < 0)
+        {
+            FlipSprite(true);
+        }
+        else if(m_FacingDir.x > 0)
+        {
+            FlipSprite(false);
+        }
+    }
+
+    public void FlipSprite(bool state)
+    {
+        float rotY = 0.0f;
+        if(state == true)
+        {
+            rotY = 180.0f;
+        }
+
+        m_Sprite.transform.rotation = Quaternion.Euler(m_Sprite.transform.rotation.x, rotY, m_Sprite.transform.rotation.z);
+        m_Flipped = state;
     }
 
     protected Vector2 TurnTo(Transform obj)

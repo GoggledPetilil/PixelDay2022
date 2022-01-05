@@ -9,16 +9,17 @@ public class ComboManager : MonoBehaviour
     public static ComboManager instance;
 
     [Header("Components")]
-    private Player m_Player;
     [SerializeField] private GameObject m_UIHolder;
     [SerializeField] private TMP_Text m_NumText;
+    [SerializeField] private TMP_Text m_RatingText;
     [SerializeField] private Image m_FillImage;
+    private Player m_Player;
 
     private int comboNum;
     private float increaseTime = 0.1f;  // How long it takes for the count to increase.
     private float sizeIncrease = 1.5f;  // How big the count gets when it increases.
 
-    private float timerDur = 1.2f;      // How long it takes for the timer to go down.
+    [SerializeField] private float timerDur = 2.0f;      // How long it takes for the timer to go down.
     private float waitTime = 1.0f;      // How long until the combo count fades out.
     private float fadeTime = 0.2f;      // How long until the combo count has faded out.
 
@@ -31,6 +32,7 @@ public class ComboManager : MonoBehaviour
     void Start()
     {
         m_NumText.text = "";
+        m_RatingText.text = "";
         m_UIHolder.SetActive(false);
     }
 
@@ -49,14 +51,27 @@ public class ComboManager : MonoBehaviour
     {
         yield return null;
 
-        // Increase the number
+        // Increase the number & Rate it
         Vector3 originSize = Vector3.one;
         Vector3 newSize = new Vector3(sizeIncrease, sizeIncrease, originSize.z);
+
+        string originRating = "";
+        if(m_RatingText.transform.localScale == Vector3.one)
+        {
+            originRating = m_RatingText.text;
+        }
+        string rating = ComboRating();
+        if(originRating != rating) m_RatingText.text = rating;
+
         float t = 0.0f;
         while(t <= 1)
         {
             t += Time.deltaTime / increaseTime;
             m_NumText.transform.localScale = Vector3.Lerp(newSize, originSize, t);
+            if(originRating != rating)
+            {
+                m_RatingText.transform.localScale = Vector3.Lerp(newSize, originSize, t);
+            }
 
             yield return null;
         }
@@ -75,8 +90,107 @@ public class ComboManager : MonoBehaviour
         MoneyManager.instance.ChangeMoney(Mathf.FloorToInt(moneyMade));
         m_UIHolder.SetActive(false);
         m_NumText.text = "";
+        m_RatingText.text = "";
         comboNum = 0;
 
         yield return null;
+    }
+
+    private string ComboRating()
+    {
+        string rating = "";
+        if(comboNum < 5)
+        {
+            rating = "";
+        }
+        else if(comboNum < 10)
+        {
+            rating = "OK";
+        }
+        else if(comboNum < 15)
+        {
+            rating = "GOOD";
+        }
+        else if(comboNum < 20)
+        {
+            rating = "GREAT";
+        }
+        else if(comboNum < 25)
+        {
+            rating = "AWESOME";
+        }
+        else if(comboNum < 30)
+        {
+            rating = "SEXY";
+        }
+        else if(comboNum < 35)
+        {
+            rating = "GROOOOVY";
+        }
+        else if(comboNum < 40)
+        {
+            rating = "RAD";
+        }
+        else if(comboNum < 45)
+        {
+            rating = "KILLIN IT";
+        }
+        else if(comboNum < 50)
+        {
+            rating = "YOOOOO";
+        }
+        else if(comboNum < 55)
+        {
+            rating = "BRO";
+        }
+        else if(comboNum < 60)
+        {
+            rating = "KING";
+        }
+        else if(comboNum < 65)
+        {
+            rating = "BASED AF";
+        }
+        else if(comboNum < 70)
+        {
+            rating = "CHAD";
+        }
+        else if(comboNum < 75)
+        {
+            rating = "INSANE";
+        }
+        else if(comboNum < 80)
+        {
+            rating = "DEADLY";
+        }
+        else if(comboNum < 85)
+        {
+            rating = "CHAOTIC";
+        }
+        else if(comboNum < 85)
+        {
+            rating = "BRUTAL";
+        }
+        else if(comboNum < 90)
+        {
+            rating = "AMAZING";
+        }
+        else if(comboNum < 95)
+        {
+            rating = "SPECTACULAR";
+        }
+        else if(comboNum < 95)
+        {
+            rating = "SSUPERIOR";
+        }
+        else if(comboNum < 100)
+        {
+            rating = "SSSTYLISH";
+        }
+        else
+        {
+            rating = "U DONE?";
+        }
+        return rating;
     }
 }
