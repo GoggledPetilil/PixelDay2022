@@ -28,17 +28,28 @@ public class Entity : MonoBehaviour
     public float m_FallMulti = 5f;
     public Vector3 m_CollOffset;
 
+    [Header("Flip Parameters")]
+    public bool m_CanFlip;
+    public float m_TurnFlipDur;
+    private bool m_IsFacingLeft;
+
     [Header("Components")]
     [SerializeField] protected Animator m_Anim;
     [SerializeField] protected AudioSource m_Audio;
+    [SerializeField] protected AudioSource m_DeathAudio;
     [SerializeField] protected Rigidbody2D m_Body;
     [SerializeField] protected GameObject m_Sprite;
-    //[SerializeField] protected SpriteRenderer m_Sprite;
     [SerializeField] protected LayerMask m_GroundLayer;
 
     [Header("Particles")]
     [SerializeField] private ParticleSystem m_WalkDust;
-    [SerializeField] private ParticleSystem m_LandDust;
+    [SerializeField] protected ParticleSystem m_LandDust;
+
+    [Header("Sound Effects")]
+    [SerializeField] protected AudioClip m_JumpSound;
+    [SerializeField] protected AudioClip m_LandSound;
+    [SerializeField] protected AudioClip m_BumpSound;
+    [SerializeField] protected AudioClip m_DeathSound;
 
     public virtual void ReduceHealth(int amount)
     {
@@ -82,6 +93,12 @@ public class Entity : MonoBehaviour
         m_Audio.Play();
     }
 
+    protected void PlayDeathSound()
+    {
+        m_DeathAudio.clip = m_DeathSound;
+        m_DeathAudio.Play();
+    }
+
     public void FreezeMovement(bool state)
     {
         if(state == true)
@@ -110,6 +127,7 @@ public class Entity : MonoBehaviour
         {
             StartCoroutine(Squeeze(1.5f, 0.8f, 0.05f));
             CreateLandDust();
+            PlayAudio(m_LandSound);
         }
     }
 
@@ -120,6 +138,7 @@ public class Entity : MonoBehaviour
         m_Body.AddForce(Vector2.up * m_JumpForce, ForceMode2D.Impulse);
         m_JumpTimer = 0.0f;
         CreateLandDust();
+        PlayAudio(m_JumpSound);
     }
 
     public void JumpPhysics()
@@ -149,11 +168,11 @@ public class Entity : MonoBehaviour
     {
         m_FacingDir = m_MovDir;
 
-        if(m_FacingDir.x < 0)
+        if(m_FacingDir.x < 0 && m_Flipped != true)
         {
             FlipSprite(true);
         }
-        else if(m_FacingDir.x > 0)
+        else if(m_FacingDir.x > 0 && m_Flipped != false)
         {
             FlipSprite(false);
         }
@@ -161,14 +180,19 @@ public class Entity : MonoBehaviour
 
     public void FlipSprite(bool state)
     {
-        float rotY = 0.0f;
+        float startY = 180.0f;
+        float endY = 0.0f;
         if(state == true)
         {
-            rotY = 180.0f;
+            startY = 0.0f;
+            endY = 180.0f;
         }
 
-        m_Sprite.transform.rotation = Quaternion.Euler(m_Sprite.transform.rotation.x, rotY, m_Sprite.transform.rotation.z);
         m_Flipped = state;
+        if(m_CanFlip == false) return;
+        
+        StopCoroutine(FlipCharacter(startY, endY));
+        StartCoroutine(FlipCharacter(startY, endY));
     }
 
     protected Vector2 TurnTo(Transform obj)
@@ -189,6 +213,14 @@ public class Entity : MonoBehaviour
         spriteHolder.localPosition = new Vector2(0.0f + offSetX, 0.0f + offSetY);
     }
 
+    void OnCollisionEnter2D(Collision2D collision)
+    {
+        if(collision.gameObject.CompareTag("Obstruct") && m_HP < 1)
+        {
+            PlayAudio(m_BumpSound);
+        }
+    }
+
     public IEnumerator Squeeze(float squeezeX, float squeezeY, float sec)
     {
         Vector3 originSize = Vector3.one;
@@ -207,5 +239,21 @@ public class Entity : MonoBehaviour
             m_Sprite.transform.localScale = Vector3.Lerp(newSize, originSize, t);
             yield return null;
         }
+    }
+
+    public IEnumerator FlipCharacter(float startRot, float endRot)
+    {
+        float startY = startRot;
+        float endY = endRot;
+        float t = 0.0f;
+        while(t < 1f)
+        {
+            t += Time.deltaTime / m_TurnFlipDur;
+            float rotY = Mathf.Lerp(startY, endY, t);
+            m_Sprite.transform.rotation = Quaternion.Euler(m_Sprite.transform.rotation.x, rotY, m_Sprite.transform.rotation.z);
+            yield return null;
+        }
+
+        yield return null;
     }
 }

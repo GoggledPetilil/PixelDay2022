@@ -6,6 +6,10 @@ public class CameraManager : MonoBehaviour
 {
       public static CameraManager instance;
 
+      [Header("Cameras")]
+      [SerializeField] private Camera m_MainCam;
+      [SerializeField] private Camera m_DeathCam;
+
       [Header("Camera Follow")]
       private bool m_Finished;
       private bool m_LockCam;
@@ -15,15 +19,22 @@ public class CameraManager : MonoBehaviour
       public float m_Magnitude;
       public float m_Power;
       private Vector3 m_OriginPos;
+      private float m_ShakePower;
 
       void Awake()
       {
           instance = this;
+
+          m_MainCam.gameObject.SetActive(true);
+          m_DeathCam.gameObject.SetActive(false);
+
+          m_MainCam = Camera.main;
       }
 
       void Start()
       {
-          m_OriginPos = this.transform.position;
+          m_OriginPos = m_MainCam.transform.position;
+          m_ShakePower = GameManager.instance.m_ShakePower;
       }
 
 
@@ -45,15 +56,21 @@ public class CameraManager : MonoBehaviour
 
       void CamShaking()
       {
-          float x = Random.Range(-1f, 1f) * (m_Magnitude * m_Power);
-          float y = Random.Range(-1f, 1f) * (m_Magnitude * m_Power);
-          transform.position = new Vector3(m_OriginPos.x + x, m_OriginPos.y + y, m_OriginPos.z);
+          float x = Random.Range(-1f, 1f) * (m_Magnitude * m_Power) * m_ShakePower;
+          float y = Random.Range(-1f, 1f) * (m_Magnitude * m_Power) * m_ShakePower;
+          m_MainCam.transform.position = new Vector3(m_OriginPos.x + x, m_OriginPos.y + y, m_OriginPos.z);
       }
 
       void CamStopShaking()
       {
           CancelInvoke("CamShaking");
           LockCamera(false);
-          transform.position = m_OriginPos;
+          m_MainCam.transform.position = m_OriginPos;
+      }
+
+      public void ActivateDeathCam()
+      {
+          m_MainCam.gameObject.SetActive(false);
+          m_DeathCam.gameObject.SetActive(true);
       }
 }

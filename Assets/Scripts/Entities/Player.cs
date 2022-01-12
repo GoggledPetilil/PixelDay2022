@@ -12,8 +12,6 @@ public class Player : Entity
 
     [Header("Overview")]
     public EntityState m_State;
-    public Color m_Color;
-    public int m_Money;
     private bool m_Died;
 
     [Header("Shoot Parameters")]
@@ -25,13 +23,19 @@ public class Player : Entity
     [Header("Components")]
     [SerializeField] private Animator m_BodyAnim;
     [SerializeField] private SpriteRenderer m_BodySprite;
+    [SerializeField] private SpriteRenderer m_HatSprite;
     [SerializeField] private ParticleSystem m_AfterImage;
+    [SerializeField] private ParticleSystem m_SelfExplosion;
     [SerializeField] private GameObject m_Gun;
     [SerializeField] private SpriteRenderer m_GunSprite;
     [SerializeField] private Animator m_GunAnim;
 
-    [Header("Sound Clips")]
-    [SerializeField] private AudioClip m_HurtSFX;
+    [Header("Tutorial Assets")]
+    [SerializeField] private GameObject m_TutorialObject;
+    private bool moved;
+    private bool shot;
+    private bool jumped;
+    private bool tutorialDone;
 
     void Awake()
     {
@@ -41,14 +45,15 @@ public class Player : Entity
     // Start is called before the first frame update
     void Start()
     {
+        EquipHat();
+
         m_FacingDir = Vector2.right; // Prevents the facing dir from being 0.
         m_Gun.transform.localPosition = m_FacingDir;
         m_Gun.transform.right = m_FacingDir;
+        m_SelfExplosion.gameObject.SetActive(false);
+        m_TutorialObject.SetActive(true);
 
         m_CanMove = true;
-
-        m_BodySprite.color = m_Color;
-        m_AfterImage.startColor = m_Color;
     }
 
     // Update is called once per frame
@@ -68,15 +73,23 @@ public class Player : Entity
               // Firing
               if(Input.GetKey(KeyCode.Z) && m_CanMove)
               {
+                  if(!shot) shot = true;
                   FireBullet();
               }
 
               // Jumping
               if(Input.GetKeyDown(KeyCode.X) && m_CanMove)
               {
+                  if(!jumped) jumped = true;
                   m_JumpTimer = Time.time + m_JumpDelay;
               }
               break;
+        }
+
+        if(!tutorialDone && moved && shot && jumped)
+        {
+            m_TutorialObject.SetActive(false);
+            tutorialDone = true;
         }
     }
 
@@ -99,6 +112,7 @@ public class Player : Entity
     {
         if(m_CanMove)
         {
+            if(!moved) moved = true;
             m_MovDir = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical")).normalized;
 
             if((m_MovDir.x != 0f || m_MovDir.y != 0f) && m_CanMove)
@@ -151,16 +165,6 @@ public class Player : Entity
         m_Gun.transform.right = m_FacingDir;
     }
 
-    public void ChangeMoney(int addition)
-    {
-        m_Money += addition;
-    }
-
-    public override void Death()
-    {
-
-    }
-
     void CameraShake()
     {
         float m_shakeDur = 0.2f;
@@ -169,10 +173,75 @@ public class Player : Entity
         CameraManager.instance.ShakeCamera(m_shakeDur, m_shakeMag, m_shakePow);
     }
 
+    void EquipHat()
+    {
+        Accessory hat = GameManager.instance.m_EquipedHat;
+        if(hat == null)
+        {
+            m_HatSprite.gameObject.SetActive(false);
+        }
+        else
+        {
+            m_HatSprite.sprite = hat.sprite;
+            m_HatSprite.transform.position = hat.offset;
+            m_HatSprite.gameObject.SetActive(true);
+        }
+    }
+
+    public override void Death()
+    {
+        // Stop Gameplay
+        CameraManager.instance.ActivateDeathCam();
+        GameplayManager.instance.TimerActive(false);
+        GameplayManager.instance.StopMusic();
+        ComboManager.instance.BreakCombo();
+        EnemyManager.instance.DeleteAllEnemies();
+        EnemyManager.instance.m_StopSpawning = true;
+        PlayDeathSound();
+
+        // Player death state
+        m_CanMove = false;
+        this.gameObject.layer = 9;
+        foreach(Transform trans in gameObject.GetComponentsInChildren<Transform>())
+        {
+            trans.gameObject.layer = 9;
+        }
+        m_Gun.SetActive(false);
+
+        // "Ragdoll"
+        m_Body.sharedMaterial = m_BounceMaterial;
+        m_Body.constraints = RigidbodyConstraints2D.None;
+        m_Body.gravityScale = 1f;
+
+        // Blast Off
+        float offsetX = Random.Range(-0.1f, 0.1f);
+        float offsetY = Random.Range(-0.1f, 0.1f);
+        Vector2 force = new Vector2(-m_FacingDir.x + offsetX, 0.5f + offsetY);
+        transform.rotation = Quaternion.Euler(0.0f, 0.0f, Random.Range(10.0f, 45.0f));
+        CreateWalkDust();
+        m_Body.AddForce(force * 42f, ForceMode2D.Impulse);
+
+        // Die
+        Invoke("GameOver", 3f);
+    }
+
+    void GameOver()
+    {
+        m_Sprite.SetActive(false);
+        m_AfterImage.Stop();
+        m_LandDust.gameObject.SetActive(false);
+        m_SelfExplosion.gameObject.SetActive(true);
+        m_SelfExplosion.Play();
+        m_Audio.volume = 0.0f;
+
+        GameplayManager.instance.GameOver();
+    }
+
     void OnCollisionEnter2D(Collision2D collision)
     {
-        if(collision.gameObject.CompareTag("Enemy"))
+        if(collision.gameObject.CompareTag("Enemy") && m_HP > 0)
         {
+            m_HP = 0;
             Death();
         }
     }

@@ -17,8 +17,8 @@ TagManager:
   - Ground
   - Entity
   - DeadEntity
-  - 
-  - 
+  - DeadPlayer
+  - PostProcess
   - 
   - 
   - 
@@ -41,6 +41,9 @@ TagManager:
   - 
   - 
   m_SortingLayers:
+  - name: Background
+    uniqueID: 625929519
+    locked: 0
   - name: Default
     uniqueID: 0
     locked: 0

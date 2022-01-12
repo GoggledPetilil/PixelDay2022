@@ -18,6 +18,8 @@ public class Enemy : Entity
     [Header("Enemy Parameters")]
     public float m_JumpDistance; // Distance until enemy jumps.
     public float m_JumpRaycast; // Length of the raycast to check for ceilings.
+    public ParticleSystem m_Blood;
+    public SpriteRenderer m_FaceSprite;
 
     [Header("Pathfinding")]
     public Transform m_Target;
@@ -36,13 +38,22 @@ public class Enemy : Entity
 
     void Start()
     {
+        this.gameObject.tag = "Untagged";
         EnemyManager.instance.m_AllEnemies.Add(this);
         m_Sprite.transform.localScale = Vector3.zero;
 
-        m_Target = GameObject.FindWithTag("Player").transform;
-        InvokeRepeating("UpdatePath", 0f, 0.5f);
+        Transform p = GameObject.FindWithTag("Player").transform;
+        if(p != null)
+        {
+            m_Target = p;
+            InvokeRepeating("UpdatePath", 0f, 0.5f);
 
-        StartCoroutine("SpawnAnimation");
+            StartCoroutine("SpawnAnimation");
+        }
+        else
+        {
+            StartCoroutine("DeathAnimation");
+        }
     }
 
     void Update()
@@ -86,7 +97,7 @@ public class Enemy : Entity
 
     void Movement()
     {
-        if(m_CanMove == false || m_Path == null) return;
+        if(m_CanMove == false || m_Path == null || m_HP < 1) return;
 
         // Check if completed waypoint
         if(m_CurrentWaypoint >= m_Path.vectorPath.Count - 1)
@@ -161,13 +172,19 @@ public class Enemy : Entity
         }
     }
 
+    public void UpdateFace(Sprite sprite)
+    {
+        m_FaceSprite.sprite = sprite;
+    }
+
     public override void Death()
     {
         // Not harmful anymore
-        EnemyManager.instance.m_AllEnemies.Remove(this);
+        PlayDeathSound();
         this.gameObject.tag = "Untagged";
         m_CanMove = false;
         gameObject.layer = 8; // This is now on layer DeadEntity
+        m_FaceSprite.gameObject.SetActive(false);
 
         // "Ragdoll"
         m_Body.sharedMaterial = m_BounceMaterial;
@@ -198,18 +215,21 @@ public class Enemy : Entity
 
     void Disappear()
     {
-        StartCoroutine("DeathAnimation");
+        EnemyManager.instance.m_AllEnemies.Remove(this);
+        EffectsManager.instance.SpawnPosEffect(EffectsManager.instance.m_Explosion, this.transform.position);
+        Destroy(this.gameObject);
     }
 
     void OnTriggerEnter2D(Collider2D col)
     {
         if(col.gameObject.CompareTag("Bullet"))
         {
-            if(m_HP < 1) return;
+            if(m_HP < 1 || this.gameObject.tag != "Enemy") return;
 
             ComboManager.instance.IncreaseCombo();
 
             ReduceHealth(1);
+            m_Blood.Play();
             if(m_HP < 1)
             {
                 Death();
@@ -240,24 +260,8 @@ public class Enemy : Entity
         col.enabled = true;
         m_Body.gravityScale = m_Gravity;
         FreezeMovement(false);
+        this.gameObject.tag = "Enemy";
 
-        yield return null;
-    }
-
-    IEnumerator DeathAnimation()
-    {
-        yield return null;
-        Vector3 originSize = Vector3.one;
-        Vector3 newSize = new Vector3(0.0f, 0.0f, originSize.z);
-        float t = 0f;
-        float deathSpeed = 1f;
-        while (t <= 1f)
-        {
-            t += Time.deltaTime / deathSpeed;
-            m_Sprite.transform.localScale = Vector3.Lerp(originSize, newSize, t);
-            yield return null;
-        }
-        Destroy(this.gameObject);
         yield return null;
     }
 }

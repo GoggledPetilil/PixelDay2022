@@ -29,6 +29,8 @@ public class PauseManager : MonoBehaviour
 
     void Update()
     {
+        if(!GameplayManager.instance.m_GameStarted) return;
+
         if(Input.GetKeyDown(KeyCode.Escape))
         {
             if(m_IsPaused)
@@ -49,6 +51,7 @@ public class PauseManager : MonoBehaviour
         Time.timeScale = 1f;
         m_IsPaused = false;
         m_PauseCanvas.SetActive(false);
+        GameManager.instance.m_AudioMixer.SetFloat("musicVolume", GameManager.instance.m_MusicVolume);
 
         //m_Audio.clip = m_ResumeSound;
         //m_Audio.Play();
@@ -61,6 +64,7 @@ public class PauseManager : MonoBehaviour
         Time.timeScale = 0f;
         m_IsPaused = true;
         m_PauseCanvas.SetActive(true);
+        GameManager.instance.m_AudioMixer.SetFloat("musicVolume", -80f);
 
         //m_Audio.clip = m_PauseSound;
         //m_Audio.Play();

@@ -37,7 +37,7 @@ public class MoneyManager : MonoBehaviour
     {
         m_Audio.clip = m_MoneyCountSFX;
 
-        m_DisplayedMoney = 0;
+        m_DisplayedMoney = GameManager.instance.m_Money;
 
         m_TotalText.text = "$" + m_DisplayedMoney.ToString();
         m_AdditionText.text = "";
@@ -45,6 +45,8 @@ public class MoneyManager : MonoBehaviour
 
     public void ChangeMoney(int addition)
     {
+        if(addition < 1) return;
+
         StopAllCoroutines();
         m_Audio.Stop();
         m_AddedMoney += addition;
@@ -82,6 +84,7 @@ public class MoneyManager : MonoBehaviour
         m_Audio.Stop();
         m_AdditionText.text = "";
         m_MoneyTransform.anchoredPosition = m_MoneyOriginPos;
+        GameplayManager.instance.m_Money = endTotal;
         yield return null;
     }
 }

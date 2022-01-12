@@ -17,11 +17,12 @@ public class PlayerBullet : MonoBehaviour
     [SerializeField] private ParticleSystem m_Trail;
     [SerializeField] private GameObject m_Explosion;
     [SerializeField] private BoxCollider2D m_Collider;
+    [SerializeField] private AudioClip m_ShootSound;
 
     void Start()
     {
-        //m_Audio.clip = m_ShootSound;
-        //m_Audio.Play();
+        m_Audio.clip = m_ShootSound;
+        m_Audio.Play();
 
         m_Trail.startColor = m_Color;
         m_Sprite.color = m_Color;
@@ -42,21 +43,24 @@ public class PlayerBullet : MonoBehaviour
         m_Collider.enabled = false;
         destroyed = true;
 
-        GameObject exp = Instantiate(m_Explosion, transform.position, Quaternion.identity) as GameObject;
-        exp.GetComponent<ParticleSystem>().startColor = m_Color;
+        Instantiate(m_Explosion, transform.position, Quaternion.identity);
 
+        m_Trail.Stop(); // The particle system will destroy the object once it's finished.
+    }
+
+    void ShakeScreen()
+    {
         float m_shakeDur = 0.2f;
         float m_shakeMag = 0.4f;
         float m_shakePow = 0.5f;
         CameraManager.instance.ShakeCamera(m_shakeDur, m_shakeMag, m_shakePow);
-
-        m_Trail.Stop(); // The particle system will destroy the object once it's finished.
     }
 
     void OnTriggerEnter2D(Collider2D col)
     {
         if(col.gameObject.CompareTag("Enemy") || col.gameObject.CompareTag("Obstruct"))
         {
+            ShakeScreen();
             SpawnExplosion();
         }
     }

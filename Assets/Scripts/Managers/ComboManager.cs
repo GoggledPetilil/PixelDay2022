@@ -9,6 +9,8 @@ public class ComboManager : MonoBehaviour
     public static ComboManager instance;
 
     [Header("Components")]
+    [SerializeField] private AudioSource m_Audio;
+    [SerializeField] private AudioClip m_CountingSound;
     [SerializeField] private GameObject m_UIHolder;
     [SerializeField] private TMP_Text m_NumText;
     [SerializeField] private TMP_Text m_RatingText;
@@ -34,6 +36,7 @@ public class ComboManager : MonoBehaviour
         m_NumText.text = "";
         m_RatingText.text = "";
         m_UIHolder.SetActive(false);
+        m_Audio.clip = m_CountingSound;
     }
 
     public void IncreaseCombo()
@@ -47,9 +50,23 @@ public class ComboManager : MonoBehaviour
         StartCoroutine("Timer");
     }
 
+    public void BreakCombo()
+    {
+        StopAllCoroutines();
+        timerDur = 0.01f;
+        waitTime = 0.01f;
+        fadeTime = 0.01f;
+        StartCoroutine("Timer");
+    }
+
     IEnumerator Timer()
     {
         yield return null;
+
+        // Play Sound
+        float startPitch = 0.9f;
+        m_Audio.pitch = Mathf.Clamp(startPitch + comboNum / 10f, startPitch, 2f);
+        m_Audio.Play();
 
         // Increase the number & Rate it
         Vector3 originSize = Vector3.one;
@@ -91,6 +108,8 @@ public class ComboManager : MonoBehaviour
         m_UIHolder.SetActive(false);
         m_NumText.text = "";
         m_RatingText.text = "";
+        GameplayManager.instance.m_TotalHits += comboNum;
+        if(GameplayManager.instance.m_BestCombo < comboNum) GameplayManager.instance.m_BestCombo = comboNum;
         comboNum = 0;
 
         yield return null;
@@ -157,13 +176,9 @@ public class ComboManager : MonoBehaviour
         }
         else if(comboNum < 75)
         {
-            rating = "INSANE";
-        }
-        else if(comboNum < 80)
-        {
             rating = "DEADLY";
         }
-        else if(comboNum < 85)
+        else if(comboNum < 80)
         {
             rating = "CHAOTIC";
         }
@@ -179,11 +194,11 @@ public class ComboManager : MonoBehaviour
         {
             rating = "SPECTACULAR";
         }
-        else if(comboNum < 95)
+        else if(comboNum < 100)
         {
             rating = "SSUPERIOR";
         }
-        else if(comboNum < 100)
+        else if(comboNum < 105)
         {
             rating = "SSSTYLISH";
         }
