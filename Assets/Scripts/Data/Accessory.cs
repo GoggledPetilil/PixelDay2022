@@ -10,7 +10,5 @@ public class Accessory : ScriptableObject
     public new string name;
     public Sprite sprite;
     public int price;
-    [TextArea(1, 3)]
-    public string description;
     public Vector2 offset;
 }

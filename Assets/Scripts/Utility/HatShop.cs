@@ -102,7 +102,7 @@ public class HatShop : MonoBehaviour
                 EquipItem();
 
                 // Adjust the UI
-                m_HatPrice.text = m_Items[m_Selected].description;
+                m_HatPrice.text = "";
                 m_BuyText.text = "Unequip";
                 canEquip = false;
 
@@ -116,7 +116,7 @@ public class HatShop : MonoBehaviour
             GameManager.instance.m_EquipedHat = null;
             GameManager.instance.m_EquipID = 0;
 
-            m_HatPrice.text = m_Items[m_Selected].description;
+            m_HatPrice.text = "";
             m_BuyText.text = "Equip";
             canEquip = true;
         }
@@ -161,13 +161,13 @@ public class HatShop : MonoBehaviour
         {
             if(GameManager.instance.m_EquipedHat == hat)
             {
-                m_HatPrice.text = m_Items[m_Selected].description;
+                m_HatPrice.text = "";
                 m_BuyText.text = "Unequip";
                 canEquip = false;
             }
             else
             {
-                m_HatPrice.text = m_Items[m_Selected].description;
+                m_HatPrice.text = "";
                 m_BuyText.text = "Equip";
                 canEquip = true;
             }

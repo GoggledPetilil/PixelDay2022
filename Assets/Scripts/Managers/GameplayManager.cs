@@ -42,6 +42,7 @@ public class GameplayManager : MonoBehaviour
     [SerializeField] private GameObject m_ComboResults;
     [SerializeField] private GameObject m_ScoreResults;
     [SerializeField] private GameObject m_NewHighScore;
+    [SerializeField] private GameObject m_ButtonsResults;
     [SerializeField] private TMP_Text m_EndTimeText;
     [SerializeField] private TMP_Text m_HitsText;
     [SerializeField] private TMP_Text m_ComboText;
@@ -64,6 +65,7 @@ public class GameplayManager : MonoBehaviour
         m_ComboResults.SetActive(false);
         m_ScoreResults.SetActive(false);
         m_NewHighScore.SetActive(false);
+        m_ButtonsResults.SetActive(false);
 
         m_Money = GameManager.instance.m_Money;
 
