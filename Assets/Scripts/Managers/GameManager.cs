@@ -130,7 +130,7 @@ public class GameManager : MonoBehaviour
         LoadData();
 
         // Check special medals and stuff
-        if(ItemIDs.Count < 1 || gItemIDs == null)
+        if(m_ItemIDs.Count < 1 || m_ItemIDs == null)
         {
             m_ItemIDs = new List<int>();
             m_ItemIDs.Add(1);
