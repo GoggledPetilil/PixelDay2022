@@ -13,8 +13,7 @@ MonoBehaviour:
   m_Name: Sprout
   m_EditorClassIdentifier: 
   ID: 14
-  name: Rose Sprout
+  name: Flower Sprout
   sprite: {fileID: 21300000, guid: 446e1393f3c68d294b69730b0f12654a, type: 3}
   price: 2000
-  description: can be used to mind control people
   offset: {x: 0, y: 1}

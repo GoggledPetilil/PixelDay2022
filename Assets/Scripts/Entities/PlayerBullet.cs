@@ -7,6 +7,7 @@ public class PlayerBullet : MonoBehaviour
     [Header("Parameters")]
     public Color m_Color;
     public int m_Speed;
+    public bool m_Bouncy;
     public float m_DestrucTime;
     private bool destroyed;
 
@@ -21,8 +22,8 @@ public class PlayerBullet : MonoBehaviour
 
     void Start()
     {
-        m_Audio.clip = m_ShootSound;
-        m_Audio.Play();
+        //m_Audio.clip = m_ShootSound;
+        //m_Audio.Play();
 
         m_Trail.startColor = m_Color;
         m_Sprite.color = m_Color;
@@ -32,7 +33,14 @@ public class PlayerBullet : MonoBehaviour
 
     void FixedUpdate()
     {
-        m_Body.velocity = transform.right * m_Speed;
+        if(m_Bouncy)
+        {
+            m_Body.AddForce(transform.right * m_Speed, ForceMode2D.Impulse);
+        }
+        else
+        {
+            m_Body.velocity = transform.right * m_Speed;
+        }
     }
 
     void SpawnExplosion()
@@ -58,7 +66,7 @@ public class PlayerBullet : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D col)
     {
-        if(col.gameObject.CompareTag("Enemy") || col.gameObject.CompareTag("Obstruct"))
+        if(col.gameObject.CompareTag("Enemy") || (col.gameObject.CompareTag("Obstruct") && !m_Bouncy))
         {
             ShakeScreen();
             SpawnExplosion();

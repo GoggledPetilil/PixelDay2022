@@ -14,6 +14,8 @@ public class PlayerData
     public int equipID;
     public int highScore;
     public float shakePow;
+    public float corpseDur;
+    public List<int> medalIDs;
 
     public PlayerData(GameManager data)
     {
@@ -26,5 +28,7 @@ public class PlayerData
         equipID = data.m_EquipID;
         highScore = data.m_HighScore;
         shakePow = data.m_ShakePower;
+        corpseDur = data.m_CorpseDuration;
+        medalIDs = data.m_MedalIDs;
     }
 }

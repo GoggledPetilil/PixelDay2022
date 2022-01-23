@@ -2,6 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using Pathfinding;
 
 public class GameplayManager : MonoBehaviour
 {
@@ -17,25 +20,36 @@ public class GameplayManager : MonoBehaviour
     [Header("Level Components")]
     public GameObject[] m_AllLayouts;
     public float m_LayoutChangeRate;
-    public float m_ChangeDuration;
+    public float m_ChangeDuration;    // How long it takes for the stage to move into position.
+    public float m_ScaleDuration;     // How long it takes for the stage to scale to proper size.
     private float m_NextChange;
     private GameObject m_CurrentLayout;
     private int m_CurrentLayoutIndex;
+
+    [Header("Power-Up Components")]
+    public List<GameObject> m_PowerUps = new List<GameObject>();
+    public float m_PowerUpFrequency;
+    private float m_NextPowerUp;
+    private bool spawning;    // The game is currently spawning an object.
 
     [Header("Timer Components")]
     public bool m_TimerActive;
     [SerializeField] private TMP_Text m_TimerText;
 
-    [Header("Audio Components")]
+    [Header("Music Components")]
+    [SerializeField] private AudioSource m_MusicPlayer;
+    [SerializeField] private AudioClip[] m_GameplayMusic;
+    [SerializeField] private AudioClip m_ResultsMusic;
+
+    [Header("Sound Components")]
+    [SerializeField] private AudioSource m_StageEarthquake;
     [SerializeField] private AudioSource m_Audio;
     [SerializeField] private AudioClip m_ShowSound;
     [SerializeField] private AudioClip m_CountingSound;
     [SerializeField] private AudioClip m_NewRecordSound;
-    [SerializeField] private AudioSource m_MusicPlayer;
-    [SerializeField] private AudioClip m_GameplayMusic;
-    [SerializeField] private AudioClip m_ResultsMusic;
 
     [Header("Results Components")]
+    [SerializeField] protected EventSystem m_EventSystem;
     [SerializeField] private GameObject m_ResultsScreen;
     [SerializeField] private GameObject m_TimeResults;
     [SerializeField] private GameObject m_HitsResults;
@@ -47,6 +61,7 @@ public class GameplayManager : MonoBehaviour
     [SerializeField] private TMP_Text m_HitsText;
     [SerializeField] private TMP_Text m_ComboText;
     [SerializeField] private TMP_Text m_ScoreText;
+    [SerializeField] private Button m_FirstSelectButton;
     private float pauseBetweenText = 0.4f;   // The small pause between text showing up.
     private float scoreCountTime = 1.5f;     // How long it takes for the score to tally up.
     private bool resultsEnded;               // If true then the results have ended.
@@ -55,6 +70,7 @@ public class GameplayManager : MonoBehaviour
     void Awake()
     {
         instance = this;
+        m_MusicPlayer.clip = m_GameplayMusic[Random.Range(0, m_GameplayMusic.Length)];
     }
 
     void Start()
@@ -68,6 +84,9 @@ public class GameplayManager : MonoBehaviour
         m_ButtonsResults.SetActive(false);
 
         m_Money = GameManager.instance.m_Money;
+
+        m_MusicPlayer.loop = true;
+        m_MusicPlayer.Play();
 
         StartGame();
     }
@@ -83,21 +102,16 @@ public class GameplayManager : MonoBehaviour
                                 timeSpan.Seconds.ToString("00") + "." +
                                 (timeSpan.Milliseconds / 10).ToString("00");
 
-            if(Time.time > m_NextChange)
+            if(Time.time > m_NextChange && spawning == false)
             {
                 m_NextChange = Time.time + (m_LayoutChangeRate * Random.Range(0.75f, 1.25f));
                 ChangeLayout();
             }
-        }
 
-        if(resultsEnded)
-        {
-            if(Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.X) || Input.GetKeyDown(KeyCode.Escape))
+            if(Time.time > m_NextPowerUp)
             {
-                if(levelEnded) return;
-
-                GameManager.instance.PlayConfirmSFX();
-                EndLevel();
+                m_NextPowerUp = Time.time + (m_PowerUpFrequency * Random.Range(0.90f, 1.5f));
+                SpawnPower();
             }
         }
     }
@@ -115,11 +129,12 @@ public class GameplayManager : MonoBehaviour
 
     public void StartGame()
     {
+        m_NextChange = Time.time + 0.2f;
+        m_NextPowerUp = Time.time + m_PowerUpFrequency;
+
         m_GameStarted = true;
         TimerActive(true);
-        m_MusicPlayer.clip = m_GameplayMusic;
-        m_MusicPlayer.loop = true;
-        m_MusicPlayer.Play();
+
         GameManager.instance.FadeIn();
         GameManager.instance.m_GameStarted = true;
     }
@@ -129,24 +144,34 @@ public class GameplayManager : MonoBehaviour
         m_MusicPlayer.Stop();
     }
 
-    public void EndLevel()
+    public void EndLevel(int nextScene)
     {
+        if(levelEnded == true) return;
+
         levelEnded = true;
         GameManager.instance.m_Money = this.m_Money;
         int score = FinalScore();
+        GameManager.instance.SubmitScore(11254, score);
         if(GameManager.instance.m_HighScore < score)
         {
             GameManager.instance.m_HighScore = score;
         }
         GameManager.instance.SaveData();
 
-        GameManager.instance.LoadLevel(0);
+        GameManager.instance.LoadLevel(nextScene);
     }
 
     public int FinalScore()
     {
         int score = Mathf.FloorToInt((m_Timer * 10) + (m_BestCombo * 100) + (m_TotalHits * 10));
         return score;
+    }
+
+    public void SpawnPower()
+    {
+        if(m_PowerUps.Count < 1) return;
+
+        StartCoroutine("SpawnPowerUp");
     }
 
     public void GameOver()
@@ -159,21 +184,94 @@ public class GameplayManager : MonoBehaviour
         StartCoroutine("LayoutChange");
     }
 
+    void CreateGrid()
+    {
+        AstarData data = AstarPath.active.astarData;
+
+        AstarPath.active.Scan();
+    }
+
+    IEnumerator SpawnPowerUp()
+    {
+        spawning = true;
+        GameObject[] points = GameObject.FindGameObjectsWithTag("Respawn");
+        int randItem = Random.Range(0, m_PowerUps.Count - 1);
+        int randPos = Random.Range(0, points.Length - 1);
+
+        Animator anim = points[randPos].GetComponent<Animator>();
+        if(anim != null)
+        {
+            anim.SetTrigger("Spawn");
+            yield return new WaitForSeconds(0.4f);
+        }
+
+        Instantiate(m_PowerUps[randItem], points[randPos].transform.position, Quaternion.identity);
+
+        m_PowerUps.RemoveAt(randItem);
+        spawning = false;
+
+        yield return null;
+    }
+
     IEnumerator LayoutChange()
     {
         EnemyManager.instance.m_StopSpawning = true;
         EnemyManager.instance.ClearSpawnPoints();
-        Vector3 startSize = Vector3.one;
-        Vector3 endSize = Vector3.zero;
+
+        Vector3 originPos = new Vector3(0.0f, 0.0f, 0.0f);
+        Vector3 newPos = new Vector3(0.0f, 15.0f, 0.0f);
+        Vector3 originScale = Vector3.one;
+        float scaleSize = 0.3f;
+        Vector3 backScale = new Vector3(scaleSize, scaleSize, 1.0f);
         float t = 0.0f;
 
         // Destroy old layout, if it exists
         if(m_CurrentLayout != null)
         {
+            // Make old stage shake, to warn the player.
+            List<ParticleSystem> dustParticles = new List<ParticleSystem>();
+            dustParticles.AddRange(m_CurrentLayout.GetComponentsInChildren<ParticleSystem>());
+            foreach(ParticleSystem dust in dustParticles)
+            {
+                dust.Play();
+            }
+            m_StageEarthquake.Play();
+            float shakeDuration = 2f;
+            while(t < 1f)
+            {
+                t += Time.deltaTime / shakeDuration;
+                float offsetX = Random.Range(-0.2f, 0.2f);
+                float offsetY = Random.Range(-0.2f, 0.2f);
+                m_CurrentLayout.transform.position = new Vector3(0.0f + offsetX, 0.0f + offsetY, 0.0f);
+                yield return null;
+            }
+            foreach(ParticleSystem dust in dustParticles)
+            {
+                dust.Stop();
+            }
+            m_StageEarthquake.Stop();
+            t = 0.0f;
+
+            Vector3 oldPos = new Vector3(0.0f, -15.0f, 0.0f); // Where the stage will go.
+            // Disable colliders.
+            foreach(Collider2D c in m_CurrentLayout.GetComponentsInChildren<Collider2D>())
+            {
+                c.enabled = false;
+            }
+            // Moving stage back
+            while(t < 1f)
+            {
+                t += Time.deltaTime / m_ScaleDuration;
+                m_CurrentLayout.transform.localScale = Vector3.Lerp(originScale, backScale, t);
+                yield return null;
+            }
+            t = 0.0f;
+            yield return new WaitForSeconds(0.15f);
+            // Move stage down.
             while(t < 1f)
             {
                 t += Time.deltaTime / m_ChangeDuration;
-                m_CurrentLayout.transform.localScale = Vector3.Lerp(startSize, endSize, t);
+                m_CurrentLayout.transform.position = Vector3.Lerp(originPos, oldPos, t);
                 yield return null;
             }
             Destroy(m_CurrentLayout);
@@ -200,20 +298,40 @@ public class GameplayManager : MonoBehaviour
         }
 
         // SpawnLayout
-        GameObject layout = Instantiate(m_AllLayouts[r], Vector3.zero, Quaternion.identity) as GameObject;
-        layout.transform.localScale = endSize;
+        GameObject layout = Instantiate(m_AllLayouts[r], newPos, Quaternion.identity) as GameObject;
+        layout.transform.localScale = backScale;
         m_CurrentLayout = layout;
         m_CurrentLayoutIndex = r;
+        foreach(Collider2D c in m_CurrentLayout.GetComponentsInChildren<Collider2D>())
+        {
+            c.enabled = false;
+        }
         t = 0.0f;
+        // Moving stage into position.
         while(t < 1f)
         {
             t += Time.deltaTime / m_ChangeDuration;
-            m_CurrentLayout.transform.localScale = Vector3.Lerp(endSize, startSize, t);
+            m_CurrentLayout.transform.position = Vector3.Lerp(newPos, originPos, t);
             yield return null;
+        }
+        t = 0.0f;
+        yield return new WaitForSeconds(0.15f);
+        // Scaling stage into view.
+        while(t < 1f)
+        {
+            t += Time.deltaTime / m_ScaleDuration;
+            m_CurrentLayout.transform.localScale = Vector3.Lerp(backScale, originScale, t);
+            yield return null;
+        }
+        // Enabling colliders.
+        foreach(Collider2D c in m_CurrentLayout.GetComponentsInChildren<Collider2D>())
+        {
+            c.enabled = true;
         }
 
         EnemyManager.instance.m_StopSpawning = false;
         EnemyManager.instance.GetAllSpawnPoints();
+        CreateGrid();
 
         yield return null;
     }
@@ -280,8 +398,50 @@ public class GameplayManager : MonoBehaviour
             PlayAudio(m_NewRecordSound);
         }
 
+        // Check if any achievements have been unlocked.
+        CheckMedalConditions();
+
+        // Control buttons
+        m_ButtonsResults.SetActive(true);
+        m_EventSystem.SetSelectedGameObject(m_FirstSelectButton.gameObject);
+
         resultsEnded = true;
 
         yield return null;
+    }
+
+    void CheckMedalConditions()
+    {
+        int score = FinalScore();
+
+        if(score < 100)
+        {
+            GameManager.instance.UnlockMedal(67029);
+        }
+
+        if(score < 1000)
+        {
+            GameManager.instance.UnlockMedal(67031);
+        }
+
+        if(score >= 10000)
+        {
+            GameManager.instance.UnlockMedal(67032);
+        }
+
+        if(m_BestCombo >= 100)
+        {
+            GameManager.instance.UnlockMedal(67035);
+        }
+
+        if(m_Timer >= 300)
+        {
+            GameManager.instance.UnlockMedal(67036);
+        }
+
+        if(m_BestCombo >= 20 && m_TotalHits >= 20 && m_TotalHits == m_BestCombo)
+        {
+            GameManager.instance.UnlockMedal(67037);
+        }
     }
 }

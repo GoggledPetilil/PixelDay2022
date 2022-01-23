@@ -16,15 +16,13 @@ public class MenuController : MonoBehaviour
     [SerializeField] private AudioClip m_MenuMusic;
 
     [Header("Intro Components")]
-    [SerializeField] private GameObject m_IntroAnimation;
-    [SerializeField] private float m_IntroDuration = 1.0f;
-    [SerializeField] private AudioSource m_SoundPlayer;
-    [SerializeField] private AudioClip m_TitleSound;
-    [SerializeField] private AudioClip m_FlashSound;
+    [SerializeField] private IntroCards m_IntroAnimation;
+    [SerializeField] private float m_IntroDuration;
 
     [Header("Main Menu Components")]
     [SerializeField] protected GameObject m_MainTab;
     [SerializeField] protected GameObject m_MainFirstObj;
+    [SerializeField] private TMP_Text m_HighScoreText;
 
     [Header("Settings Components")]
     [SerializeField] protected GameObject m_SettingsTab;
@@ -66,7 +64,7 @@ public class MenuController : MonoBehaviour
 
         if(GameManager.instance.m_GameStarted)
         {
-            m_IntroAnimation.SetActive(false);
+            m_IntroAnimation.gameObject.SetActive(false);
             EnableMainMenu();
             PlayMenuMusic();
             GameManager.instance.FadeIn();
@@ -74,6 +72,10 @@ public class MenuController : MonoBehaviour
         else
         {
             m_MusicPlayer.Stop();
+            m_MainTab.SetActive(false);
+            m_SettingsTab.SetActive(false);
+            m_AvatarTab.SetActive(false);
+
             StartCoroutine("IntroSequence");
         }
     }
@@ -148,13 +150,6 @@ public class MenuController : MonoBehaviour
         m_MusicPlayer.Play();
     }
 
-    public void PlaySoundEffect(AudioClip clip)
-    {
-        m_SoundPlayer.loop = false;
-        m_SoundPlayer.clip = clip;
-        m_SoundPlayer.Play();
-    }
-
     protected void LoadSavedSettings()
     {
         m_MasterSlider.value = GameManager.instance.m_MasterVolume;
@@ -197,6 +192,8 @@ public class MenuController : MonoBehaviour
 
         SaveSettings();
         GameManager.instance.SaveData();
+
+        m_HighScoreText.text = "Your High-Score:\n" + GameManager.instance.m_HighScore;
     }
 
     public virtual void EnableSettingsMenu()
@@ -275,23 +272,9 @@ public class MenuController : MonoBehaviour
 
     IEnumerator IntroSequence()
     {
-        m_MainTab.SetActive(false);
-        m_SettingsTab.SetActive(false);
-        m_AvatarTab.SetActive(false);
+        m_IntroAnimation.gameObject.SetActive(true);
 
-        m_IntroAnimation.SetActive(true);
-
-        yield return new WaitForSeconds(0.5f);
-        PlaySoundEffect(m_TitleSound);
-        yield return new WaitForSeconds(2/6f);
-        PlaySoundEffect(m_TitleSound);
-        yield return new WaitForSeconds(2/6f);
-        PlaySoundEffect(m_TitleSound);
-
-        yield return new WaitForSeconds(2/6f);
-        PlaySoundEffect(m_FlashSound);
-
-        yield return new WaitForSeconds(0.5f);
+        yield return new WaitForSeconds(m_IntroDuration);
 
         EnableMainMenu();
         PlayMenuMusic();

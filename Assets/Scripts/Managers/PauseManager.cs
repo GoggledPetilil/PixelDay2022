@@ -31,7 +31,7 @@ public class PauseManager : MonoBehaviour
     {
         if(!GameplayManager.instance.m_GameStarted) return;
 
-        if(Input.GetKeyDown(KeyCode.Escape))
+        if(Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.P))
         {
             if(m_IsPaused)
             {

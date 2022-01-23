@@ -20,12 +20,13 @@ public class Enemy : Entity
     public float m_JumpRaycast; // Length of the raycast to check for ceilings.
     public ParticleSystem m_Blood;
     public SpriteRenderer m_FaceSprite;
+    public AudioClip m_SpawnSound;
 
     [Header("Pathfinding")]
     public Transform m_Target;
     private Vector2 m_TargetPos;
     private Vector2 m_TargetOffset;
-    public float m_NextWaypointDistance = 3f;
+    public float m_NextWaypointDistance = 0.5f;
     private Path m_Path;
     private int m_CurrentWaypoint = 0;
     private bool m_ReachedEndPath = false;
@@ -63,6 +64,8 @@ public class Enemy : Entity
         CheckGround();
         JumpPhysics();
 
+        if(m_Seeker.enabled == false || m_Path == null) return;
+
         switch (m_State)
         {
             case EntityState.Idle:
@@ -70,9 +73,12 @@ public class Enemy : Entity
               MovementLogic();
 
               //Jump Check
-              float distToPlayer = Vector2.Distance(m_Body.position, m_TargetPos);
-              RaycastHit2D hit = Physics2D.Raycast(transform.position, Vector2.up, m_JumpRaycast, m_GroundLayer);
-              if(m_CanMove && !m_CanFly && distToPlayer < m_JumpDistance && m_TargetPos.y > transform.position.y && hit.collider == null)
+              bool canJump = false;
+              if(m_CurrentWaypoint < m_Path.vectorPath.Count - 1)
+              {
+                  canJump = m_Path.vectorPath[m_CurrentWaypoint].y < m_Path.vectorPath[m_CurrentWaypoint + 1].y;
+              }
+              if(m_CanMove && !m_CanFly && m_MovDir.y > 0.7f && canJump)
               {
                   m_JumpTimer = Time.time + m_JumpDelay;
               }
@@ -185,6 +191,7 @@ public class Enemy : Entity
         m_CanMove = false;
         gameObject.layer = 8; // This is now on layer DeadEntity
         m_FaceSprite.gameObject.SetActive(false);
+        m_Seeker.enabled = false;
 
         // "Ragdoll"
         m_Body.sharedMaterial = m_BounceMaterial;
@@ -210,13 +217,13 @@ public class Enemy : Entity
         m_Body.AddForce(force * 42f, ForceMode2D.Impulse);
 
         // Die
-        Invoke("Disappear", 5f);
+        Invoke("Disappear", 5f * GameManager.instance.m_CorpseDuration);
     }
 
     void Disappear()
     {
         EnemyManager.instance.m_AllEnemies.Remove(this);
-        EffectsManager.instance.SpawnPosEffect(EffectsManager.instance.m_Explosion, this.transform.position);
+        EffectsManager.instance.SpawnPosEffect(EffectsManager.instance.m_EnemyExplosion, this.transform.position);
         Destroy(this.gameObject);
     }
 
@@ -250,6 +257,8 @@ public class Enemy : Entity
         Vector3 endSize = Vector3.one;
         float t = 0f;
         float spawnSpeed = 0.2f;
+        m_Audio.clip = m_SpawnSound;
+        m_Audio.Play();
         while(t < 1f)
         {
             t += Time.deltaTime / spawnSpeed;

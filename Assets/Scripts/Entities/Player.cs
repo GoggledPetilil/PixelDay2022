@@ -16,9 +16,20 @@ public class Player : Entity
 
     [Header("Shoot Parameters")]
     public GameObject m_BulletPrefab;
+    public GameObject m_BouncyPrefab;
     public float m_ShootCooldown;
-    public Transform m_BulletPoint;
+    public Transform[] m_BulletPoints;
     private float m_NextShot;
+    [SerializeField] private AudioSource m_GunAudio;
+    [SerializeField] private AudioClip m_ShootSound;
+
+    [Header("Power-Ups")]
+    [SerializeField] private AudioClip m_PowerUpSFX;
+    [SerializeField] private GameObject m_ShieldObject;
+    [SerializeField] private bool m_Shield;
+    [SerializeField] private bool m_Spreader;
+    [SerializeField] private bool m_MachineGun;
+    [SerializeField] private bool m_BounceBullets;
 
     [Header("Components")]
     [SerializeField] private Animator m_BodyAnim;
@@ -40,6 +51,7 @@ public class Player : Entity
     void Awake()
     {
         m_Body = GetComponent<Rigidbody2D>();
+        m_GunAudio.clip = m_ShootSound;
     }
 
     // Start is called before the first frame update
@@ -50,6 +62,7 @@ public class Player : Entity
         m_FacingDir = Vector2.right; // Prevents the facing dir from being 0.
         m_Gun.transform.localPosition = m_FacingDir;
         m_Gun.transform.right = m_FacingDir;
+        m_ShieldObject.SetActive(false);
         m_SelfExplosion.gameObject.SetActive(false);
         m_TutorialObject.SetActive(true);
 
@@ -71,14 +84,14 @@ public class Player : Entity
               Move();
 
               // Firing
-              if(Input.GetKey(KeyCode.Z) && m_CanMove)
+              if((Input.GetKey(KeyCode.Z) || Input.GetKey(KeyCode.K)) && m_CanMove)
               {
                   if(!shot) shot = true;
                   FireBullet();
               }
 
               // Jumping
-              if(Input.GetKeyDown(KeyCode.X) && m_CanMove)
+              if((Input.GetKey(KeyCode.X) || Input.GetKey(KeyCode.L)) && m_CanMove)
               {
                   if(!jumped) jumped = true;
                   m_JumpTimer = Time.time + m_JumpDelay;
@@ -137,12 +150,33 @@ public class Player : Entity
         {
             m_GunAnim.SetTrigger("Fire");
 
-            Vector2 pos = new Vector2(m_BulletPoint.position.x, m_BulletPoint.position.y);
-            GameObject obj = Instantiate(m_BulletPrefab, pos, Quaternion.identity) as GameObject;
+            // Get the correct bullet and the right amount.
+            GameObject bulletPrefab = null;
+            if(m_BounceBullets)
+            {
+                bulletPrefab = m_BouncyPrefab;
+            }
+            else
+            {
+                bulletPrefab = m_BulletPrefab;
+            }
+            int bulletAmount = 1;
+            if(m_Spreader) bulletAmount = 3;
+            m_GunAudio.Play();
 
-            obj.transform.right = m_FacingDir;
+            for(int i = 0; i < bulletAmount; i++)
+            {
+                // Instantiate the bullet.
+                Vector2 pos = new Vector2(m_BulletPoints[i].position.x, m_BulletPoints[i].position.y);
+                GameObject obj = Instantiate(bulletPrefab, pos, Quaternion.identity) as GameObject;
 
-            m_NextShot = Time.time + m_ShootCooldown;
+                // Turn bullet to proper rotation.
+                obj.transform.rotation = m_BulletPoints[i].rotation;
+            }
+
+            float fireRate = 1f;
+            if(m_MachineGun) fireRate = 0.5f;
+            m_NextShot = Time.time + m_ShootCooldown * fireRate;
         }
     }
 
@@ -183,8 +217,51 @@ public class Player : Entity
         else
         {
             m_HatSprite.sprite = hat.sprite;
-            m_HatSprite.transform.position = hat.offset;
+            m_HatSprite.transform.localPosition = hat.offset;
             m_HatSprite.gameObject.SetActive(true);
+        }
+    }
+
+    void PlayPowerUPSound()
+    {
+        m_Audio.clip = m_PowerUpSFX;
+        m_Audio.Play();
+    }
+
+    public void EnableShield()
+    {
+        PlayPowerUPSound();
+        m_ShieldObject.SetActive(true);
+        m_Shield = true;
+        CheckPowers();
+    }
+
+    public void EnableSpreader()
+    {
+        PlayPowerUPSound();
+        m_Spreader = true;
+        CheckPowers();
+    }
+
+    public void EnableRapidFire()
+    {
+        PlayPowerUPSound();
+        m_MachineGun = true;
+        CheckPowers();
+    }
+
+    public void EnableBounce()
+    {
+        PlayPowerUPSound();
+        m_BounceBullets = true;
+        CheckPowers();
+    }
+
+    void CheckPowers()
+    {
+        if(m_Shield && m_Spreader && m_MachineGun && m_BounceBullets)
+        {
+            GameManager.instance.UnlockMedal(67052);
         }
     }
 
@@ -200,6 +277,7 @@ public class Player : Entity
         PlayDeathSound();
 
         // Player death state
+        m_TutorialObject.SetActive(false);
         m_CanMove = false;
         this.gameObject.layer = 9;
         foreach(Transform trans in gameObject.GetComponentsInChildren<Transform>())
@@ -239,7 +317,7 @@ public class Player : Entity
 
     void OnCollisionEnter2D(Collision2D collision)
     {
-        if(collision.gameObject.CompareTag("Enemy") && m_HP > 0)
+        if((collision.gameObject.CompareTag("Enemy") || collision.gameObject.CompareTag("EnemyBullet")) && m_HP > 0)
         {
             m_HP = 0;
             Death();

@@ -190,7 +190,7 @@ public class Entity : MonoBehaviour
 
         m_Flipped = state;
         if(m_CanFlip == false) return;
-        
+
         StopCoroutine(FlipCharacter(startY, endY));
         StartCoroutine(FlipCharacter(startY, endY));
     }

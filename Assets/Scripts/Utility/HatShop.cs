@@ -8,6 +8,7 @@ public class HatShop : MonoBehaviour
 {
     public List<Accessory> m_Items = new List<Accessory>();
     public int m_Selected;
+    public AudioClip m_BuySound;
 
     [Header("UI Components")]
     [SerializeField] private TMP_Text m_MoneyHeld;
@@ -91,7 +92,7 @@ public class HatShop : MonoBehaviour
             else
             {
                 // Adjust Cash
-                GameManager.instance.PlayConfirmSFX();
+                GameManager.instance.PlaySound(m_BuySound);
                 GameManager.instance.m_Money -= m_Items[m_Selected].price;
                 m_MoneyHeld.text = "$" + GameManager.instance.m_Money.ToString();
 
@@ -106,6 +107,12 @@ public class HatShop : MonoBehaviour
                 m_BuyText.text = "Unequip";
                 canEquip = false;
 
+                GameManager.instance.UnlockMedal(67034);
+                if(GameManager.instance.m_ItemIDs.Count >= m_Items.Count)
+                {
+                    // The player has bought every item there is.
+                    GameManager.instance.UnlockMedal(67039);
+                }
                 GameManager.instance.SaveData();
             }
         }

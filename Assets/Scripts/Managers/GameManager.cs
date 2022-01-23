@@ -9,16 +9,21 @@ public class GameManager : MonoBehaviour
     [Header("GameManager Components")]
     public static GameManager instance;
     public AudioMixer m_AudioMixer;
+    [SerializeField] private StartScript m_SaveManager;
+    [SerializeField] private NGHelper m_NGHelper;
+    [SerializeField] private Animator m_MedalAnimator;
     [SerializeField] private Animator m_SaveAnimator;
     [SerializeField] private Animator m_FadeAnimator;
 
     [Header("Audio Components")]
     [SerializeField] private GameObject m_OneShotAudio;
+    [SerializeField] private AudioSource m_GeneralAudio;
     [SerializeField] private AudioSource m_CursorAudio;
     [SerializeField] private AudioSource m_SelectionAudio;
     [SerializeField] private AudioClip m_CursorSFX;
     [SerializeField] private AudioClip m_ConfirmSFX;
     [SerializeField] private AudioClip m_CancelSFX;
+    [SerializeField] private AudioClip m_MedalSFX;
 
     [Header("Game Data")]
     public bool m_GameStarted;          // To indicate that the game has started, skipping the intro.
@@ -36,15 +41,20 @@ public class GameManager : MonoBehaviour
     public int m_EquipID;
     public int m_HighScore;
     public float m_ShakePower;
+    public float m_CorpseDuration;
+    public List<int> m_MedalIDs = new List<int>();
 
     void Awake()
     {
         if(GameManager.instance == null)
         {
+            // Prepare GameManager
             instance = this;
             DontDestroyOnLoad(this.gameObject);
 
-            LoadData();
+            // Set up GameManager components
+            m_NGHelper = GameObject.Find("NGHelper").GetComponent<NGHelper>();
+            m_MedalAnimator.gameObject.SetActive(false);
         }
         else
         {
@@ -91,6 +101,12 @@ public class GameManager : MonoBehaviour
         auso.pitch = pitch;
     }
 
+    public void PlaySound(AudioClip clip)
+    {
+        m_GeneralAudio.clip = clip;
+        m_GeneralAudio.Play();
+    }
+
     public void PlayCursorSFX()
     {
         m_CursorAudio.clip = m_CursorSFX;
@@ -109,6 +125,30 @@ public class GameManager : MonoBehaviour
         m_SelectionAudio.Play();
     }
 
+    public void InitializeData()
+    {
+        LoadData();
+
+        // Check special medals and stuff
+        if(gItemIDs.Count < 1 || gItemIDs == null)
+        {
+            m_ItemIDs = new List<int>();
+            m_ItemIDs.Add(1);
+        }
+
+        if(m_MedalIDs.Count < 1 || m_MedalIDs == null)
+        {
+            m_MedalIDs = new List<int>();
+            UnlockMedal(67075);
+        }
+
+        string today = System.DateTime.Now.ToString("MM/dd");
+        if(today == "01/23")
+        {
+            UnlockMedal(67038);
+        }
+    }
+
     public void SaveData()
     {
         m_SaveAnimator.SetTrigger("Saving");
@@ -122,6 +162,8 @@ public class GameManager : MonoBehaviour
     {
         PlayerData data = SaveSystem.LoadData();
 
+        if(data == null) return;
+
         m_Money = data.money;
         m_MasterVolume = data.masterVolume;
         m_MusicVolume = data.musicVolume;
@@ -131,11 +173,33 @@ public class GameManager : MonoBehaviour
         m_EquipID = data.equipID;
         m_HighScore = data.highScore;
         m_ShakePower = data.shakePow;
+        m_CorpseDuration = data.corpseDur;
+        m_MedalIDs = data.medalIDs;
 
         m_AudioMixer.SetFloat("masterVolume", m_MasterVolume);
         m_AudioMixer.SetFloat("musicVolume", m_MusicVolume);
         m_AudioMixer.SetFloat("soundVolume", m_SoundVolume);
         QualitySettings.SetQualityLevel(m_QualityLevel, false);
+    }
+
+    public void SubmitScore(int scoreboardID, int score)
+    {
+        m_NGHelper.NGSubmitScore(11254, score);
+    }
+
+    public void UnlockMedal(int medalID)
+    {
+        m_NGHelper.unlockMedal(medalID);
+
+        // The medal is always unlocked on Newgrounds, regardless.
+        // This is just to celebrate it in-game.
+        if(m_MedalIDs.Contains(medalID)) return;
+        m_MedalIDs.Add(medalID);
+        SaveData();
+
+        m_MedalAnimator.gameObject.SetActive(true);
+        m_MedalAnimator.SetTrigger("Unlock");
+        PlaySound(m_MedalSFX);
     }
 
     public void GameOver()

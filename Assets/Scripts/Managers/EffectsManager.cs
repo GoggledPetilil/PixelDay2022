@@ -8,6 +8,7 @@ public class EffectsManager : MonoBehaviour
 
     [Header("Particle Effects")]
     public GameObject m_Explosion;
+    public GameObject m_EnemyExplosion;
 
     void Awake()
     {

@@ -11,8 +11,11 @@ public class EnemyManager : MonoBehaviour
     public int m_MaxEnemies;
     public float m_SpawnTime;
     private float m_NextSpawn;
+    private float m_MinSpawnTime = 0.2f;
+    private float m_SpawnIncreaseRate = 240f;
     public List<Enemy> m_AllEnemies = new List<Enemy>();
     public List<Transform> m_AllSpawnPoints = new List<Transform>();
+    [SerializeField] private AudioSource m_SpawnAudio;
 
     [Header("Enemy Prefabs")]
     [SerializeField] private GameObject[] m_EnemyPrefabs;
@@ -21,6 +24,7 @@ public class EnemyManager : MonoBehaviour
     void Awake()
     {
         instance = this;
+        m_SpawnAudio = GetComponent<AudioSource>();
     }
 
     void Start()
@@ -33,6 +37,11 @@ public class EnemyManager : MonoBehaviour
         if(Time.time > m_NextSpawn && m_AllEnemies.Count < m_MaxEnemies && !m_StopSpawning)
         {
             StartCoroutine("SpawnEnemy");
+        }
+
+        if(m_SpawnTime > m_MinSpawnTime)
+        {
+            m_SpawnTime -= Time.deltaTime / m_SpawnIncreaseRate;
         }
     }
 
@@ -59,17 +68,19 @@ public class EnemyManager : MonoBehaviour
 
     IEnumerator SpawnEnemy()
     {
-        m_NextSpawn = Time.time + (m_SpawnTime * Random.Range(0.5f, 1.5f));
+        m_NextSpawn = Time.time + (m_SpawnTime * Random.Range(0.5f, 1.2f));
 
         int re = Random.Range(0, m_EnemyPrefabs.Length);
         int rs = Random.Range(0, m_AllSpawnPoints.Count - 1);
         Vector2 pos = m_AllSpawnPoints[rs].position;
 
+        m_SpawnAudio.Play();
         m_AllSpawnPoints[rs].GetComponent<Animator>().SetTrigger("Spawn");
         yield return new WaitForSeconds(0.4f);
         GameObject go = Instantiate(m_EnemyPrefabs[re], pos, Quaternion.identity) as GameObject;
         Sprite face = m_EnemyFaces[Random.Range(0, m_EnemyFaces.Length - 1)];
-        go.GetComponent<Enemy>().UpdateFace(face);
+        Enemy enemyScript = go.GetComponent<Enemy>();
+        if(enemyScript != null) enemyScript.UpdateFace(face);
 
         yield return null;
     }
